@@ -1,6 +1,10 @@
-function [radiuses, max_probs, edge_arr_sizes,thetas] = ...
+function [radiuses, max_probs, edge_arr_sizes] = ...
     DLA_edge_walk_par(N, edge_walk_end_prob, min_num_of_simulated_particles,...
     max_iterations, draw, cut_zeros)
+
+MIN_RADIUS = parallel.pool.Constant(10);
+DELTA_R = parallel.pool.Constant(2);
+PARTICLE_SYMB = parallel.pool.Constant(2);
 
 if draw
 cc = [1 1 1; 0 0 1]; % Blue and yellow (RGB values)
@@ -34,11 +38,11 @@ while (all(grid(:,1)==0) && all(grid(:,N)==0) && ...
     iteration = iteration +1;
     radiuses(iteration) = rmax;
     edge_arr_sizes(iteration) = numel(edge_arr);
-    r = max(rmax+rad, 10); % Pick a distance just beyond the edge of the cluster
+    r = max(rmax+rad, 10); % Pick a distance just beyond the edge of the cluster 
     if r>N/2; break; end % Stop when the cluster gets too big
 
     num_simulated_particles = max(min_num_of_simulated_particles, ...
-        10 * r^2);
+       3 * edge_arr_sizes(iteration)^2); 
     chosen_edges = struct('x', [], 'y', [], 'from_x', [], 'from_y', [], 'valid', [], 'counter', []);
     
     collision_points = struct('x', [], 'y', [], 'from_x', [], 'from_y', []);
@@ -46,7 +50,10 @@ while (all(grid(:,1)==0) && all(grid(:,N)==0) && ...
     %run all the particles in parallel until they hit the aggregate
     parfor(i=1:num_simulated_particles)
         [x, y, fr_x, fr_y] = simulate_single_particle(grid, r);
-        collision_points(i) = {x, y, fr_x, fr_y};
+        collision_points(i).x = x;
+        collision_points(i).y = y;
+        collision_points(i).from_x = fr_x;
+        collision_points(i).from_y = fr_y;
     end
     % after all the particles stuck, let the walk along the edge and
     % see where they end up
@@ -61,11 +68,11 @@ while (all(grid(:,1)==0) && all(grid(:,N)==0) && ...
     end
     % update our output and choose an edge to add
     max_probs(iteration) = max(arrayfun(@(k) edge_arr(k).counter,...
-                1:numel(edge_arr)))/num_of_simulated_particles;
+                1:numel(edge_arr)))/num_simulated_particles;
     for j=1:numel(edge_arr)
         edge_arr(j).counter = 0;
     end
-    index = randi(num_of_simulated_particles);
+    index = randi(num_simulated_particles);
     edge_to_add = chosen_edges(index);
     
     % update the edge array after selecting a single edge to add
@@ -82,7 +89,6 @@ end
 if cut_zeros
 radiuses = radiuses(1,1:iteration);
 max_probs = max_probs(1,1:iteration);
-thetas = thetas(1,1:iteration);
 edge_arr_sizes = edge_arr_sizes(1:iteration);
 end
 end
