@@ -16,7 +16,7 @@ function [x, y, fr_x, fr_y] = simulate_single_particle(grid, ...
 end
 
 function [x, y] = random_starting_point(r, N)
-    theta = pi * rand();
+    theta = 2*pi * rand();
     R = r;
     x = floor(cos(theta) * R) + N/2;
     y = floor(sin(theta) * R) + N/2;
